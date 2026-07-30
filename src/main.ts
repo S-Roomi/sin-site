@@ -26,6 +26,7 @@ const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('App root was not found.');
 
 app.innerHTML = `
+  <div class="sand-fill" aria-hidden="true"></div>
   <canvas class="sand" aria-hidden="true"></canvas>
   <header class="site-header">
     <a class="wordmark" href="#top" aria-label="${profile.name}, home">SR<span>.</span></a>
@@ -40,7 +41,7 @@ app.innerHTML = `
   <main id="top">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <h1 id="hero-title" class="sand-word">.</h1>
+        <h1 id="hero-title" class="sand-word">abc</h1>
         <p class="eyebrow">Software Engineer ${profile.location}</p>
         <p class="intro">${profile.role}. I turn complex problems into useful tools, from full-stack web applications to interactive experiments.</p>
         <div class="hero-actions">
@@ -140,100 +141,78 @@ if (!foundContext) throw new Error('Canvas 2D context is not available.');
 const context: CanvasRenderingContext2D = foundContext;
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-const grainSize = 2;
-// A grain may only cross one visible cell per paint. Raising this value makes
-// the simulation skip cells, which reads as teleporting rather than faster sand.
-const riseRowsPerFrame = 1000;
-// Increase this to make the scene build up faster without changing grain detail
-// or the distance an individual grain travels in a rendered frame.
-const sandEmissionMultiplier = 20;
-const simulationStepsPerFrame = 4;
-const maxFrameDelta = 50;
-
-
 const sandColors = ['#dd5b34', '#d85a35', '#df603a', '#d35331'];
+const columnWidth = 4;
+const maxParticles = 320;
+const frameInterval = 1_000 / 60;
+const maxFrameDelta = 100;
+const edgeBandHeight = 128;
+const edgeLead = 48;
+const sandFallSpeed = 160;
+const sandCatchUpSpeed = 300;
+
+type SandParticle = {
+  x: number;
+  y: number;
+  speed: number;
+  colorIndex: number;
+  size: number;
+};
+
 let animationFrame: number | undefined;
 let lastFrameTime: number | undefined;
-let spawnRemainder = 0;
-let cells = new Uint8Array();
-let columns = 0;
-let rows = 0;
 let canvasWidth = 0;
-let canvasHeight = 0;
-let targetCells = new Uint8Array();
-let activeCells: number[] = [];
-let pendingActiveCells: number[] = [];
-let activeFlags = new Uint8Array();
-let queuedActiveGrains = 0;
-let maxActiveGrains = 0;
-let dirtyCells: number[] = [];
-let dirtyFlags = new Uint8Array();
+let siteHeight = 0;
+let sandDepth = 0;
+let bandTop = 0;
+let heights = new Float32Array();
+let edgeNoise = new Float32Array();
+let particles: SandParticle[] = [];
+let textMask: HTMLCanvasElement | undefined;
+let textMaskX = 0;
+let textMaskY = 0;
 
 const title = document.querySelector<HTMLElement>('.sand-word');
 if (!title) throw new Error('Hero title was not found.');
+const foundFill = document.querySelector<HTMLElement>('.sand-fill');
+if (!foundFill) throw new Error('Completed sand layer was not found.');
+const sandFill: HTMLElement = foundFill;
 
 function resetSand(): void {
   const box = canvas.getBoundingClientRect();
-  const scale = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = Math.max(1, Math.floor(box.width * scale));
-  canvas.height = Math.max(1, Math.floor(box.height * scale));
-  context.setTransform(scale, 0, 0, scale, 0, 0);
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.max(1, Math.floor(box.width * pixelRatio));
+  canvas.height = Math.max(1, Math.floor(edgeBandHeight * pixelRatio));
+  context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   canvasWidth = box.width;
-  canvasHeight = box.height;
-  columns = Math.ceil(box.width / grainSize);
-  rows = Math.ceil(box.height / grainSize);
-  cells = new Uint8Array(columns * rows);
-  targetCells = new Uint8Array(columns * rows);
-  activeCells = [];
-  pendingActiveCells = [];
-  activeFlags = new Uint8Array(columns * rows);
-  queuedActiveGrains = 0;
-  maxActiveGrains = Math.min(3600, Math.max(1200, Math.ceil(columns * rows * 0.04)));
-  dirtyCells = [];
-  dirtyFlags = new Uint8Array(columns * rows);
-  lastFrameTime = undefined;
-  spawnRemainder = 0;
-  buildTextMask();
-}
-
-function cellIndex(x: number, y: number): number {
-  return x + y * columns;
-}
-
-function wakeCell(index: number): void {
-  if (!cells[index] || activeFlags[index]) return;
-
-  activeFlags[index] = 1;
-  queuedActiveGrains += 1;
-  pendingActiveCells.push(index);
-}
-
-function markDirty(index: number): void {
-  if (dirtyFlags[index]) return;
-
-  dirtyFlags[index] = 1;
-  dirtyCells.push(index);
-}
-
-function wakeGrainsBelow(index: number): void {
-  const x = index % columns;
-  const y = Math.floor(index / columns);
-  if (y === rows - 1) return;
-
-  for (let dx = -1; dx <= 1; dx += 1) {
-    const belowX = x + dx;
-    if (belowX >= 0 && belowX < columns) wakeCell(cellIndex(belowX, y + 1));
+  siteHeight = app.scrollHeight;
+  const columnCount = Math.ceil(canvasWidth / columnWidth) + 1;
+  heights = new Float32Array(columnCount);
+  edgeNoise = new Float32Array(columnCount);
+  for (let column = 0; column < columnCount; column += 1) {
+    edgeNoise[column] = (Math.random() - 0.5) * 7;
   }
+  particles = [];
+  sandDepth = 0;
+  bandTop = 0;
+  sandFill.style.transform = 'scaleY(0)';
+  canvas.style.transform = 'translate3d(0, 0, 0)';
+  canvas.hidden = false;
+  title.classList.remove('sand-word--settled');
+  lastFrameTime = undefined;
+  buildTextMask();
+  drawSand();
 }
 
 function buildTextMask(): void {
+  const titleBox = title.getBoundingClientRect();
+  const appBox = app.getBoundingClientRect();
   const mask = document.createElement('canvas');
-  mask.width = Math.max(1, Math.ceil(canvasWidth));
-  mask.height = Math.max(1, Math.ceil(canvasHeight));
+  mask.width = Math.max(1, Math.ceil(titleBox.width));
+  mask.height = Math.max(1, Math.ceil(titleBox.height));
   const maskContext = mask.getContext('2d');
   if (!maskContext) return;
 
-  const canvasBox = canvas.getBoundingClientRect();
   const textWalker = document.createTreeWalker(title, NodeFilter.SHOW_TEXT);
   let textNode = textWalker.nextNode();
 
@@ -256,131 +235,130 @@ function buildTextMask(): void {
       const characterBox = range.getBoundingClientRect();
       if (!characterBox.width || !characterBox.height) continue;
 
-      const baseline = characterBox.top - canvasBox.top + (lineHeight - fontSize) / 2 + fontSize * 0.8;
-      maskContext.fillText(value[character], characterBox.left - canvasBox.left, baseline);
+      const baseline = characterBox.top - titleBox.top + (lineHeight - fontSize) / 2 + fontSize * 0.8;
+      maskContext.fillText(value[character], characterBox.left - titleBox.left, baseline);
     }
 
     textNode = textWalker.nextNode();
   }
 
-  const pixels = maskContext.getImageData(0, 0, mask.width, mask.height).data;
-  for (let y = 0; y < rows; y += 1) {
-    for (let x = 0; x < columns; x += 1) {
-      const sampleX = Math.min(mask.width - 1, Math.floor(x * grainSize + grainSize / 2));
-      const sampleY = Math.min(mask.height - 1, Math.floor(y * grainSize + grainSize / 2));
-      if (pixels[(sampleX + sampleY * mask.width) * 4 + 3]) targetCells[cellIndex(x, y)] = 1;
-    }
-  }
-
+  textMask = mask;
+  textMaskX = titleBox.left - appBox.left;
+  textMaskY = titleBox.top - appBox.top;
   title.classList.add('sand-word--ready');
 }
 
-function addSand(deltaMs: number): void {
-  if (queuedActiveGrains >= maxActiveGrains) return;
+function updateHeightField(deltaSeconds: number): void {
+  sandDepth = Math.min(siteHeight, sandDepth + deltaSeconds * sandFallSpeed);
+  bandTop = Math.max(0, Math.min(siteHeight - edgeBandHeight, sandDepth - edgeLead));
+  const localDepth = sandDepth - bandTop;
 
-  const baseGrainsPerSecond = Math.max(3_000, columns * 12);
-  const availableCapacity = 1 - queuedActiveGrains / maxActiveGrains;
-  spawnRemainder += baseGrainsPerSecond * sandEmissionMultiplier * (deltaMs / 1_000) * availableCapacity ** 2;
-  const grainsPerFrame = Math.min(
-    maxActiveGrains - queuedActiveGrains,
-    Math.floor(spawnRemainder),
-  );
-  if (grainsPerFrame === 0) return;
-  spawnRemainder -= grainsPerFrame;
-
-  for (let grain = 0; grain < grainsPerFrame; grain += 1) {
-    const x = Math.floor(Math.random() * columns);
-    const index = cellIndex(x, rows - 1);
-    if (!cells[index]) {
-      cells[index] = Math.floor(Math.random() * sandColors.length) + 1;
-      wakeCell(index);
-      markDirty(index);
-    }
+  for (let column = 0; column < heights.length; column += 1) {
+    const target = Math.max(0, localDepth + edgeNoise[column]);
+    const difference = target - heights[column];
+    heights[column] += Math.sign(difference) * Math.min(Math.abs(difference), deltaSeconds * sandCatchUpSpeed);
   }
-}
 
-function moveSand(current: number, destination: number): void {
-  cells[destination] = cells[current];
-  cells[current] = 0;
-  markDirty(current);
-  markDirty(destination);
-  wakeCell(destination);
-  wakeGrainsBelow(current);
-}
-
-function stepSand(): void {
-  for (const current of activeCells) {
-    activeFlags[current] = 0;
-    queuedActiveGrains -= 1;
-    if (!cells[current]) continue;
-
-    const x = current % columns;
-    const y = Math.floor(current / columns);
-    let destination = -1;
-
-    for (let riseRow = 1; riseRow <= riseRowsPerFrame; riseRow += 1) {
-      const nextY = y - riseRow;
-      if (nextY < 0) break;
-
-      const above = cellIndex(x, nextY);
-      if (cells[above]) break;
-      destination = above;
-    }
-
-    if (destination === -1 && y - 1 >= 0) {
-      const direction = Math.random() > 0.5 ? -1 : 1;
-      for (const dx of [direction, -direction]) {
-        const nextX = x + dx;
-        if (nextX < 0 || nextX >= columns) continue;
-
-        const diagonal = cellIndex(nextX, y - 1);
-        if (!cells[diagonal]) {
-          destination = diagonal;
-          break;
-        }
+  // A few relaxation passes keep the edge sand-like without simulating every grain.
+  for (let pass = 0; pass < 2; pass += 1) {
+    for (let column = 1; column < heights.length - 1; column += 1) {
+      const neighbor = column + (Math.random() < 0.5 ? -1 : 1);
+      const difference = heights[column] - heights[neighbor];
+      if (Math.abs(difference) > columnWidth * 1.5) {
+        const transfer = Math.sign(difference) * Math.min(1.2, Math.abs(difference) * 0.18);
+        heights[column] -= transfer;
+        heights[neighbor] += transfer;
       }
     }
-
-    if (destination === -1) continue;
-
-    moveSand(current, destination);
   }
 
-  const processedCells = activeCells;
-  activeCells = pendingActiveCells;
-  pendingActiveCells = processedCells;
-  pendingActiveCells.length = 0;
+  sandFill.style.transform = `scaleY(${bandTop / Math.max(1, siteHeight)})`;
+  canvas.style.transform = `translate3d(0, ${Math.floor(bandTop)}px, 0)`;
+
+  if (textMask && sandDepth >= textMaskY + textMask.height) {
+    title.classList.add('sand-word--settled');
+  }
+}
+
+function updateParticles(deltaSeconds: number): void {
+  const desiredParticles = Math.min(maxParticles, Math.ceil(canvasWidth / 6));
+  while (particles.length < desiredParticles && sandDepth < siteHeight) {
+    const x = Math.random() * canvasWidth;
+    const edge = heights[Math.min(heights.length - 1, Math.floor(x / columnWidth))];
+    particles.push({
+      x,
+      y: edge + Math.random() * 8,
+      speed: 70 + Math.random() * 90,
+      colorIndex: Math.floor(Math.random() * sandColors.length),
+      size: Math.random() < 0.8 ? 2 : 3,
+    });
+  }
+
+  for (const particle of particles) {
+    particle.y += particle.speed * deltaSeconds;
+    const edge = heights[Math.min(heights.length - 1, Math.floor(particle.x / columnWidth))];
+    if (particle.y > edge + 54 || particle.y > edgeBandHeight) {
+      particle.x = Math.random() * canvasWidth;
+      const nextEdge = heights[Math.min(heights.length - 1, Math.floor(particle.x / columnWidth))];
+      particle.y = nextEdge + Math.random() * 8;
+      particle.speed = 70 + Math.random() * 90;
+    }
+  }
 }
 
 function drawSand(): void {
-  for (const index of dirtyCells) {
-    const x = index % columns;
-    const y = Math.floor(index / columns);
+  context.clearRect(0, 0, canvasWidth, edgeBandHeight);
+  context.fillStyle = sandColors[0];
+  context.beginPath();
+  context.moveTo(0, 0);
+  context.lineTo(canvasWidth, 0);
+  for (let column = heights.length - 1; column >= 0; column -= 1) {
+    context.lineTo(column * columnWidth, heights[column]);
+  }
+  context.closePath();
+  context.fill();
 
-    context.clearRect(x * grainSize, y * grainSize, grainSize, grainSize);
-    const sand = cells[index];
-    if (y < rows - 1 && sand && !targetCells[index]) {
-      context.fillStyle = sandColors[sand - 1];
-      context.fillRect(x * grainSize, y * grainSize, grainSize, grainSize);
+  for (let colorIndex = 0; colorIndex < sandColors.length; colorIndex += 1) {
+    context.beginPath();
+    for (const particle of particles) {
+      if (particle.colorIndex === colorIndex) {
+        context.rect(particle.x, particle.y, particle.size, particle.size);
+      }
     }
-
-    dirtyFlags[index] = 0;
+    context.fillStyle = sandColors[colorIndex];
+    context.fill();
   }
 
-  dirtyCells.length = 0;
+  if (textMask) {
+    const localMaskY = textMaskY - bandTop;
+    if (localMaskY < edgeBandHeight && localMaskY + textMask.height > 0) {
+      context.save();
+      context.globalCompositeOperation = 'destination-out';
+      context.drawImage(textMask, textMaskX, localMaskY);
+      context.restore();
+    }
+  }
 }
 
 function animateSand(timestamp: number): void {
-  const deltaMs = Math.min(timestamp - (lastFrameTime ?? timestamp - 1_000 / 60), maxFrameDelta);
+  const deltaMs = Math.min(timestamp - (lastFrameTime ?? timestamp), maxFrameDelta);
+  if (lastFrameTime !== undefined && deltaMs < frameInterval) {
+    animationFrame = requestAnimationFrame(animateSand);
+    return;
+  }
   lastFrameTime = timestamp;
 
-  addSand(deltaMs);
+  updateHeightField(deltaMs / 1_000);
+  updateParticles(deltaMs / 1_000);
+  drawSand();
 
-  for (let step = 0; step < simulationStepsPerFrame; step += 1) {
-    stepSand();
+  if (sandDepth >= siteHeight) {
+    sandFill.style.transform = 'scaleY(1)';
+    canvas.hidden = true;
+    animationFrame = undefined;
+    return;
   }
 
-  drawSand();
   animationFrame = requestAnimationFrame(animateSand);
 }
 
@@ -389,13 +367,22 @@ function startSand(): void {
   resetSand();
   if (reducedMotion.matches) {
     title.classList.remove('sand-word--ready');
-    drawSand();
     return;
   }
   animationFrame = requestAnimationFrame(animateSand);
 }
 
-// window.addEventListener('resize', startSand);
+const resizeObserver = new ResizeObserver(startSand);
+resizeObserver.observe(app);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (animationFrame !== undefined) cancelAnimationFrame(animationFrame);
+    animationFrame = undefined;
+  } else if (!reducedMotion.matches) {
+    lastFrameTime = undefined;
+    animationFrame = requestAnimationFrame(animateSand);
+  }
+});
 reducedMotion.addEventListener('change', startSand);
 startSand();
 void document.fonts?.ready.then(startSand);

@@ -85,13 +85,27 @@ footer a:hover {
     pointer-events: none;
 }
 
+.sand-fill,
 .sand {
     position: absolute;
-    inset: 0;
+    left: 0;
+    top: 0;
     width: 100%;
-    height: 100%;
     z-index: 2;
     pointer-events: none;
+}
+
+.sand-fill {
+    height: 100%;
+    background: var(--orange);
+    transform: scaleY(0);
+    transform-origin: top;
+    will-change: transform;
+}
+
+.sand {
+    height: 128px;
+    will-change: transform;
 }
 
 .hero-copy {
@@ -137,6 +151,11 @@ h2 em {
 
 .sand-word--ready em {
     color: transparent;
+}
+
+.sand-word--ready.sand-word--settled,
+.sand-word--ready.sand-word--settled em {
+    color: var(--paper);
 }
 
 .intro {
