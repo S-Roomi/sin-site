@@ -29,17 +29,19 @@ app.innerHTML = `
   <div class="sand-fill" aria-hidden="true"></div>
   <canvas class="sand" aria-hidden="true"></canvas>
   <header class="site-header">
-    <a class="wordmark" href="#top" aria-label="${profile.name}, home">SR<span>.</span></a>
+    <button class="theme-toggle" type="button" aria-label="Toggle color theme" aria-pressed="false">
+      <span aria-hidden="true">☼</span>
+    </button>
     <nav aria-label="Main navigation">
-      <a href="#work">Work</a>
-      <a href="#about">About</a>
-      <a href="#experience">Experience</a>
-      <a href="#contact">Contact</a>
+      <a class="active" href="#top" data-section="top">Hey</a>
+      <a href="#work" data-section="work">Work</a>
+      <a href="#about" data-section="about">Story</a>
+      <a href="#contact" data-section="contact">Chat</a>
     </nav>
   </header>
 
-  <main id="top">
-    <section class="hero" aria-labelledby="hero-title">
+  <main>
+    <section class="hero" id="top" aria-labelledby="hero-title">
       <div class="hero-copy">
         <h1 id="hero-title" class="sand-word">abc</h1>
         <p class="eyebrow">Software Engineer ${profile.location}</p>
@@ -427,3 +429,42 @@ document.addEventListener('visibilitychange', () => {
 reducedMotion.addEventListener('change', startSand);
 startSand();
 void document.fonts?.ready.then(startSand);
+
+const themeToggle = document.querySelector<HTMLButtonElement>('.theme-toggle');
+const navLinks = [...document.querySelectorAll<HTMLAnchorElement>('.site-header [data-section]')];
+
+function setTheme(theme: 'light' | 'dark'): void {
+  document.documentElement.dataset.theme = theme;
+  themeToggle?.setAttribute('aria-pressed', String(theme === 'dark'));
+}
+
+const savedTheme = localStorage.getItem('theme');
+setTheme(savedTheme === 'dark' ? 'dark' : 'light');
+themeToggle?.addEventListener('click', () => {
+  const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  setTheme(nextTheme);
+  localStorage.setItem('theme', nextTheme);
+});
+
+const observedSections = navLinks
+  .map((link) => document.getElementById(link.dataset.section ?? ''))
+  .filter((section): section is HTMLElement => section !== null);
+
+const sectionObserver = new IntersectionObserver((entries) => {
+  const visibleSection = entries
+    .filter((entry) => entry.isIntersecting)
+    .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+  if (!visibleSection) return;
+
+  for (const link of navLinks) {
+    const isActive = link.dataset.section === visibleSection.target.id;
+    link.classList.toggle('active', isActive);
+    if (isActive) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  }
+}, {
+  rootMargin: '-20% 0px -55%',
+  threshold: [0, 0.15, 0.35, 0.6],
+});
+
+for (const section of observedSections) sectionObserver.observe(section);
