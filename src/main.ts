@@ -29,14 +29,11 @@ app.innerHTML = `
   <div class="sand-fill" aria-hidden="true"></div>
   <canvas class="sand" aria-hidden="true"></canvas>
   <header class="site-header">
-    <button class="theme-toggle" type="button" aria-label="Toggle color theme" aria-pressed="false">
-      <span aria-hidden="true">☼</span>
-    </button>
     <nav aria-label="Main navigation">
-      <a class="active" href="#top" data-section="top">Hey</a>
+      <a class="active" href="#top" data-section="top">Home</a>
       <a href="#work" data-section="work">Work</a>
-      <a href="#about" data-section="about">Story</a>
-      <a href="#contact" data-section="contact">Chat</a>
+      <a href="#about" data-section="about">About</a>
+      <a href="#contact" data-section="contact">Contact</a>
     </nav>
   </header>
 
@@ -122,7 +119,7 @@ app.innerHTML = `
           </a>
         </div>
         <div class="resume-slot">
-          <a class="resume-link" href="${resumeUrl}" download="Sina-Roomi-Resume.pdf">
+          <a class="resume-link" href="${resumeUrl}" target="_blank">
             <span class="resume-link__label">Download resume</span>
             <span class="resume-link__icon" aria-hidden="true">↓</span>
           </a>
