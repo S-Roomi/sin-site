@@ -98,9 +98,8 @@ footer a:hover {
 .sand-fill {
     height: 100%;
     background: var(--orange);
-    transform: scaleY(0);
-    transform-origin: top;
-    will-change: transform;
+    clip-path: inset(0 0 100% 0);
+    will-change: clip-path;
 }
 
 .sand {

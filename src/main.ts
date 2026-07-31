@@ -142,7 +142,9 @@ const context: CanvasRenderingContext2D = foundContext;
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const sandColors = ['#dd5b34', '#d85a35', '#df603a', '#d35331'];
-const columnWidth = 4;
+// Change this one value to control the size of every visible sand pixel.
+const sandPixelSize = 2;
+const columnWidth = sandPixelSize * 2;
 const maxParticles = 320;
 const frameInterval = 1_000 / 60;
 const maxFrameDelta = 100;
@@ -168,6 +170,7 @@ let bandTop = 0;
 let heights = new Float32Array();
 let edgeNoise = new Float32Array();
 let particles: SandParticle[] = [];
+let sandPattern: CanvasPattern | null = null;
 let textMask: HTMLCanvasElement | undefined;
 let textMaskX = 0;
 let textMaskY = 0;
@@ -178,12 +181,45 @@ const foundFill = document.querySelector<HTMLElement>('.sand-fill');
 if (!foundFill) throw new Error('Completed sand layer was not found.');
 const sandFill: HTMLElement = foundFill;
 
+function createSandTexture(): HTMLCanvasElement {
+  const tileCells = 12;
+  const texture = document.createElement('canvas');
+  texture.width = tileCells * sandPixelSize;
+  texture.height = tileCells * sandPixelSize;
+  const textureContext = texture.getContext('2d');
+  if (!textureContext) return texture;
+
+  for (let y = 0; y < tileCells; y += 1) {
+    for (let x = 0; x < tileCells; x += 1) {
+      // Favor the base orange so the texture stays subtle at larger settings.
+      const colorIndex = Math.random() < 0.7
+        ? 0
+        : 1 + Math.floor(Math.random() * (sandColors.length - 1));
+      textureContext.fillStyle = sandColors[colorIndex];
+      textureContext.fillRect(
+        x * sandPixelSize,
+        y * sandPixelSize,
+        sandPixelSize,
+        sandPixelSize,
+      );
+    }
+  }
+
+  return texture;
+}
+
+const sandTexture = createSandTexture();
+sandFill.style.backgroundImage = `url("${sandTexture.toDataURL()}")`;
+sandFill.style.backgroundSize = `${sandTexture.width}px ${sandTexture.height}px`;
+
 function resetSand(): void {
   const box = canvas.getBoundingClientRect();
   const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.max(1, Math.floor(box.width * pixelRatio));
   canvas.height = Math.max(1, Math.floor(edgeBandHeight * pixelRatio));
   context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  context.imageSmoothingEnabled = false;
+  sandPattern = context.createPattern(sandTexture, 'repeat');
   canvasWidth = box.width;
   siteHeight = app.scrollHeight;
   const columnCount = Math.ceil(canvasWidth / columnWidth) + 1;
@@ -195,7 +231,7 @@ function resetSand(): void {
   particles = [];
   sandDepth = 0;
   bandTop = 0;
-  sandFill.style.transform = 'scaleY(0)';
+  sandFill.style.clipPath = 'inset(0 0 100% 0)';
   canvas.style.transform = 'translate3d(0, 0, 0)';
   canvas.hidden = false;
   title.classList.remove('sand-word--settled');
@@ -272,10 +308,10 @@ function updateHeightField(deltaSeconds: number): void {
     }
   }
 
-  sandFill.style.transform = `scaleY(${bandTop / Math.max(1, siteHeight)})`;
+  sandFill.style.clipPath = `inset(0 0 ${Math.max(0, siteHeight - bandTop)}px 0)`;
   canvas.style.transform = `translate3d(0, ${Math.floor(bandTop)}px, 0)`;
 
-  if (textMask && sandDepth >= textMaskY + textMask.height) {
+  if (textMask && bandTop >= textMaskY + textMask.height) {
     title.classList.add('sand-word--settled');
   }
 }
@@ -308,28 +344,33 @@ function updateParticles(deltaSeconds: number): void {
 
 function drawSand(): void {
   context.clearRect(0, 0, canvasWidth, edgeBandHeight);
-  context.fillStyle = sandColors[0];
+  sandPattern?.setTransform(new DOMMatrix().translate(0, -bandTop));
+  context.fillStyle = sandPattern ?? sandColors[0];
   context.beginPath();
-  context.moveTo(0, 0);
-  context.lineTo(canvasWidth, 0);
-  for (let column = heights.length - 1; column >= 0; column -= 1) {
-    context.lineTo(column * columnWidth, heights[column]);
+  for (let column = 0; column < heights.length; column += 1) {
+    const pixelHeight = Math.ceil(heights[column] / sandPixelSize) * sandPixelSize;
+    context.rect(column * columnWidth, 0, columnWidth, pixelHeight);
   }
-  context.closePath();
   context.fill();
 
   for (let colorIndex = 0; colorIndex < sandColors.length; colorIndex += 1) {
     context.beginPath();
     for (const particle of particles) {
       if (particle.colorIndex === colorIndex) {
-        context.rect(particle.x, particle.y, particle.size, particle.size);
+        const x = Math.floor(particle.x / sandPixelSize) * sandPixelSize;
+        const y = Math.floor(particle.y / sandPixelSize) * sandPixelSize;
+        const size = Math.max(
+          sandPixelSize,
+          Math.round(particle.size / sandPixelSize) * sandPixelSize,
+        );
+        context.rect(x, y, size, size);
       }
     }
     context.fillStyle = sandColors[colorIndex];
     context.fill();
   }
 
-  if (textMask) {
+  if (textMask && !title.classList.contains('sand-word--settled')) {
     const localMaskY = textMaskY - bandTop;
     if (localMaskY < edgeBandHeight && localMaskY + textMask.height > 0) {
       context.save();
@@ -353,7 +394,7 @@ function animateSand(timestamp: number): void {
   drawSand();
 
   if (sandDepth >= siteHeight) {
-    sandFill.style.transform = 'scaleY(1)';
+    sandFill.style.clipPath = 'inset(0)';
     canvas.hidden = true;
     animationFrame = undefined;
     return;
