@@ -22,6 +22,47 @@ const profile: Profile = {
   linkedin: 'https://www.linkedin.com/in/sina-roomi',
 };
 
+const projects = [
+  {
+    number: '01',
+    type: 'Data tracker website',
+    title: 'Arena Tracker',
+    description: 'A tool for tracking and exploring arena data in one focused, easy-to-use place.',
+    color: 'teal',
+    url: 'https://github.com/S-Roomi/arena_tracker',
+  },
+  {
+    number: '02',
+    type: 'Computer vision research',
+    title: 'Eye Blink Detection',
+    description: 'Research exploring computer-vision methods for detecting eye blinks from video.',
+    color: 'lilac',
+    url: 'https://github.com/S-Roomi/iBlink',
+  },
+  {
+    number: '03',
+    type: 'Python simulation',
+    title: 'BotCT',
+    description: 'A multiplayer simulation of Blood on the Clocktower with role logic, character abilities, and Discord integration.',
+    color: 'amber',
+    url: 'https://github.com/arenvista/BotCT',
+  },
+] as const;
+
+const projectCards = projects.map((project, index) => `
+  <article class="project-card ${project.color}" data-project-index="${index}">
+    <p class="project-number">${project.number}</p>
+    <div>
+      <p class="project-type">${project.type}</p>
+      <h3>${project.title}</h3>
+      <p>${project.description}</p>
+    </div>
+    <a href="${project.url}" target="_blank" rel="noreferrer" aria-label="View ${project.title} on GitHub">
+      View on GitHub <span aria-hidden="true">↗</span>
+    </a>
+  </article>
+`).join('');
+
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('App root was not found.');
 
@@ -55,22 +96,18 @@ app.innerHTML = `
         <p class="eyebrow">Selected work</p>
         <h2 id="work-title">Projects built to make ideas tangible.</h2>
       </div>
-      <div class="project-list">
-        <article class="project-card teal">
-          <p class="project-number">01</p>
-          <div><p class="project-type">Data tracker website</p><h3>Arena Tracker</h3><p>A tool for tracking and exploring arena data in one focused, easy-to-use place.</p></div>
-          <a href="https://github.com/S-Roomi/arena_tracker" target="_blank" rel="noreferrer" aria-label="View Arena Tracker on GitHub">View on GitHub <span aria-hidden="true">↗</span></a>
-        </article>
-        <article class="project-card lilac">
-          <p class="project-number">02</p>
-          <div><p class="project-type">Computer vision research</p><h3>Eye Blink Detection</h3><p>Research exploring computer-vision methods for detecting eye blinks from video.</p></div>
-          <a href="https://github.com/S-Roomi/iBlink" target="_blank" rel="noreferrer" aria-label="View Eye Blink Detection research on GitHub">View on GitHub <span aria-hidden="true">↗</span></a>
-        </article>
-        <article class="project-card amber">
-          <p class="project-number">03</p>
-          <div><p class="project-type">Python simulation</p><h3>BotCT</h3><p>A multiplayer simulation of Blood on the Clocktower with role logic, character abilities, and Discord integration.</p></div>
-          <a href="https://github.com/arenvista/BotCT" target="_blank" rel="noreferrer" aria-label="View BotCT">View on GitHub <span aria-hidden="true">↗</span></a>
-        </article>
+      <div class="project-carousel" role="region" aria-roledescription="carousel" aria-label="Selected projects" tabindex="0">
+        <button class="carousel-control carousel-control--previous" type="button" aria-label="Previous project">←</button>
+        <div class="carousel-stage">
+          ${projectCards}
+        </div>
+        <button class="carousel-control carousel-control--next" type="button" aria-label="Next project">→</button>
+        <div class="carousel-pagination" aria-label="Choose a project">
+          ${projects.map((project, index) => `
+            <button type="button" data-carousel-page="${index}" aria-label="Show ${project.title}"></button>
+          `).join('')}
+        </div>
+        <p class="visually-hidden carousel-status" aria-live="polite"></p>
       </div>
     </section>
 
@@ -426,6 +463,95 @@ document.addEventListener('visibilitychange', () => {
 reducedMotion.addEventListener('change', startSand);
 startSand();
 void document.fonts?.ready.then(startSand);
+
+const carousel = document.querySelector<HTMLElement>('.project-carousel');
+const carouselCards = [...document.querySelectorAll<HTMLElement>('.project-card')];
+const carouselPages = [...document.querySelectorAll<HTMLButtonElement>('[data-carousel-page]')];
+const carouselStatus = document.querySelector<HTMLElement>('.carousel-status');
+let activeProjectIndex = 0;
+let pointerStartX: number | undefined;
+let suppressCardClick = false;
+
+function projectOffset(index: number): number {
+  let offset = index - activeProjectIndex;
+  if (offset > projects.length / 2) offset -= projects.length;
+  if (offset < -projects.length / 2) offset += projects.length;
+  return offset;
+}
+
+function showProject(index: number): void {
+  activeProjectIndex = (index + projects.length) % projects.length;
+
+  for (const [cardIndex, card] of carouselCards.entries()) {
+    const offset = projectOffset(cardIndex);
+    card.dataset.position = offset === 0 ? 'active' : offset < 0 ? 'previous' : 'next';
+    card.setAttribute('aria-label', `Project ${cardIndex + 1} of ${projects.length}: ${projects[cardIndex].title}`);
+    card.querySelector<HTMLAnchorElement>('a')!.tabIndex = offset === 0 ? 0 : -1;
+  }
+
+  for (const [pageIndex, page] of carouselPages.entries()) {
+    const isActive = pageIndex === activeProjectIndex;
+    page.classList.toggle('active', isActive);
+    page.setAttribute('aria-pressed', String(isActive));
+  }
+
+  if (carouselStatus) {
+    carouselStatus.textContent =
+      `Project ${activeProjectIndex + 1} of ${projects.length}: ${projects[activeProjectIndex].title}`;
+  }
+}
+
+document.querySelector('.carousel-control--previous')?.addEventListener('click', () => {
+  showProject(activeProjectIndex - 1);
+});
+document.querySelector('.carousel-control--next')?.addEventListener('click', () => {
+  showProject(activeProjectIndex + 1);
+});
+
+for (const page of carouselPages) {
+  page.addEventListener('click', () => showProject(Number(page.dataset.carouselPage)));
+}
+
+for (const [index, card] of carouselCards.entries()) {
+  card.addEventListener('click', (event) => {
+    if (suppressCardClick) return;
+    const clickedLink = event.target instanceof Element ? event.target.closest('a') : null;
+    if (clickedLink && index === activeProjectIndex) return;
+    if (clickedLink) event.preventDefault();
+    showProject(index);
+  });
+}
+
+carousel?.addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    showProject(activeProjectIndex - 1);
+  } else if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    showProject(activeProjectIndex + 1);
+  }
+});
+
+carousel?.addEventListener('pointerdown', (event) => {
+  if (event.isPrimary) pointerStartX = event.clientX;
+});
+carousel?.addEventListener('pointerup', (event) => {
+  if (pointerStartX === undefined) return;
+  const dragDistance = event.clientX - pointerStartX;
+  pointerStartX = undefined;
+  if (Math.abs(dragDistance) < 45) return;
+
+  suppressCardClick = true;
+  showProject(activeProjectIndex + (dragDistance < 0 ? 1 : -1));
+  queueMicrotask(() => {
+    suppressCardClick = false;
+  });
+});
+carousel?.addEventListener('pointercancel', () => {
+  pointerStartX = undefined;
+});
+
+showProject(0);
 
 const themeToggle = document.querySelector<HTMLButtonElement>('.theme-toggle');
 const navLinks = [...document.querySelectorAll<HTMLAnchorElement>('.site-header [data-section]')];
