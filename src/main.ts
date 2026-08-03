@@ -509,21 +509,8 @@ carousel?.addEventListener('pointercancel', () => {
 
 showProject(0);
 
-const themeToggle = document.querySelector<HTMLButtonElement>('.theme-toggle');
 const navLinks = [...document.querySelectorAll<HTMLAnchorElement>('.site-header [data-section]')];
 
-function setTheme(theme: 'light' | 'dark'): void {
-  document.documentElement.dataset.theme = theme;
-  themeToggle?.setAttribute('aria-pressed', String(theme === 'dark'));
-}
-
-const savedTheme = localStorage.getItem('theme');
-setTheme(savedTheme === 'dark' ? 'dark' : 'light');
-themeToggle?.addEventListener('click', () => {
-  const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  setTheme(nextTheme);
-  localStorage.setItem('theme', nextTheme);
-});
 
 const observedSections = navLinks
   .map((link) => document.getElementById(link.dataset.section ?? ''))
