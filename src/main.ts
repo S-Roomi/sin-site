@@ -5,7 +5,6 @@ const resumeUrl = '/Resume.pdf';
 type Profile = {
   name: string;
   role: string;
-  location: string;
   email: string;
   availability: string;
   github: string;
@@ -15,7 +14,6 @@ type Profile = {
 const profile: Profile = {
   name: 'Sina Roomi',
   role: 'Computer science graduate and software developer',
-  location: 'Based in Baltimore, MD',
   email: 'sinar.roomi@gmail.com',
   availability: 'Open to software engineering opportunities',
   github: 'https://github.com/S-Roomi',
@@ -81,9 +79,8 @@ app.innerHTML = `
   <main>
     <section class="hero" id="top" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <h1 id="hero-title" class="sand-word">abc</h1>
-        <p class="eyebrow">Software Engineer ${profile.location}</p>
-        <p class="intro">${profile.role}. I turn complex problems into useful tools, from full-stack web applications to interactive experiments.</p>
+        <h1 id="hero-title" class="sand-word">Sina Roomi</h1>
+        <p class="intro">${profile.role}. I turn complex problems into simple ones.</p>
         <div class="hero-actions">
           <a class="button" href="#work">See my work <span aria-hidden="true">↓</span></a>
           <a class="text-link" href="mailto:${profile.email}">Let's talk <span aria-hidden="true">↗</span></a>
@@ -97,11 +94,11 @@ app.innerHTML = `
         <h2 id="work-title">Projects built to make ideas tangible.</h2>
       </div>
       <div class="project-carousel" role="region" aria-roledescription="carousel" aria-label="Selected projects" tabindex="0">
-        <button class="carousel-control carousel-control--previous" type="button" aria-label="Previous project">←</button>
+        <button class="carousel-control carousel-control--previous" type="button" aria-label="Previous project">🢤</button>
         <div class="carousel-stage">
           ${projectCards}
         </div>
-        <button class="carousel-control carousel-control--next" type="button" aria-label="Next project">→</button>
+        <button class="carousel-control carousel-control--next" type="button" aria-label="Next project">➪</button>
         <div class="carousel-pagination" aria-label="Choose a project">
           ${projects.map((project, index) => `
             <button type="button" data-carousel-page="${index}" aria-label="Show ${project.title}"></button>
@@ -118,28 +115,29 @@ app.innerHTML = `
         <div>
           <p>I'm a UMBC computer science graduate with a minor in philosophy. I enjoy building reliable software and explaining the ideas behind it clearly.</p>
           <p>My tutoring and mentoring work has made me a patient collaborator who can break down difficult problems, listen closely, and help a team move forward.</p>
-          <ul class="skills" aria-label="Technical skills"><li>Python</li><li>C/C++</li><li>JavaScript</li><li>TypeScript</li><li>HTML/CSS</li><li>SQL</li><li>React</li><li>Next.js</li><li>Node.js</li><li>Flask</li><li>FastAPI</li><li>Git</li><li>Docker</li><li>Podman</li></ul>
+          <p>Technical Skills:</p>
+          <ul class="skills" aria-label="Technical skills"><li>Python</li><li>C/C++</li><li>JavaScript</li><li>TypeScript</li><li>HTML/CSS</li><li>SQL</li><li>React</li><li>Next.js</li><li>NumPy</li><li>Pandas</li><li>Git</li><li>Docker</li></ul>
         </div>
       </div>
     </section>
 
     <section class="section experience" id="experience" aria-labelledby="experience-title">
       <div class="section-heading">
-        <p class="eyebrow">Experience & education</p>
+        <p class="eyebrow">Education & Experience</p>
         <h2 id="experience-title">Teaching, mentorship, and a foundation in computer science.</h2>
       </div>
       <div class="experience-list">
+        <article>
+          <p class="experience-date">2022 — 2026</p>
+          <div><h3>B.S. in Computer Science</h3><p class="experience-place">University of Maryland, Baltimore County</p><p>Minor in philosophy.</p></div>
+        </article>
         <article>
           <p class="experience-date">2025 — 2026</p>
           <div><h3>Tutor Mentor</h3><p class="experience-place">University of Maryland, Baltimore County</p><p>Dedicated 500 hours to tutoring and advising, led one-on-one mentor sessions, and helped junior tutors strengthen their practice through structured feedback.</p></div>
         </article>
         <article>
           <p class="experience-date">2025 — 2026</p>
-          <div><h3>CRLA Certified & Student-Athlete Tutor</h3><p class="experience-place">University of Maryland, Baltimore County</p><p>Supported students across computer science coursework with personalized study strategies, practice materials, and technical problem-solving sessions.</p></div>
-        </article>
-        <article>
-          <p class="experience-date">2022 — 2026</p>
-          <div><h3>B.S. in Computer Science</h3><p class="experience-place">University of Maryland, Baltimore County</p><p>Graduated with a minor in philosophy.</p></div>
+          <div><h3>CRLA Certified & Student-Athlete Tutor</h3><p class="experience-place">University of Maryland, Baltimore County</p><p>Tutored over 300+ students across computer science coursework with personalized study strategies, practice materials, and technical problem-solving sessions.</p></div>
         </article>
       </div>
     </section>
@@ -573,21 +571,52 @@ const observedSections = navLinks
   .map((link) => document.getElementById(link.dataset.section ?? ''))
   .filter((section): section is HTMLElement => section !== null);
 
-const sectionObserver = new IntersectionObserver((entries) => {
-  const visibleSection = entries
-    .filter((entry) => entry.isIntersecting)
-    .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-  if (!visibleSection) return;
-
+function setActiveNav(sectionId: string): void {
   for (const link of navLinks) {
-    const isActive = link.dataset.section === visibleSection.target.id;
+    const isActive = link.dataset.section === sectionId;
     link.classList.toggle('active', isActive);
     if (isActive) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   }
-}, {
-  rootMargin: '-20% 0px -55%',
-  threshold: [0, 0.15, 0.35, 0.6],
-});
+}
 
-for (const section of observedSections) sectionObserver.observe(section);
+function updateActiveNav(): void {
+  if (observedSections.length === 0) return;
+
+  const pageBottom = window.scrollY + window.innerHeight;
+  const documentHeight = document.documentElement.scrollHeight;
+  let activeSection = observedSections[0];
+
+  // The final section may be too short to reach the activation point.
+  if (pageBottom >= documentHeight - 2) {
+    activeSection = observedSections[observedSections.length - 1];
+  } else {
+    const activationPoint = window.scrollY + window.innerHeight * 0.35;
+    for (const section of observedSections) {
+      const sectionTop = section.getBoundingClientRect().top + window.scrollY;
+      if (sectionTop > activationPoint) break;
+      activeSection = section;
+    }
+  }
+
+  setActiveNav(activeSection.id);
+}
+
+let navUpdateFrame: number | undefined;
+function scheduleNavUpdate(): void {
+  if (navUpdateFrame !== undefined) return;
+  navUpdateFrame = window.requestAnimationFrame(() => {
+    navUpdateFrame = undefined;
+    updateActiveNav();
+  });
+}
+
+for (const link of navLinks) {
+  link.addEventListener('click', () => {
+    setActiveNav(link.dataset.section ?? '');
+  });
+}
+
+window.addEventListener('scroll', scheduleNavUpdate, { passive: true });
+window.addEventListener('resize', scheduleNavUpdate);
+updateActiveNav();
