@@ -207,6 +207,11 @@ let particles: SandParticle[] = [];
 let sandPattern: CanvasPattern | null = null;
 let sandWordTop = 0;
 let sandWordHeight = 0;
+let sandInitialized = false;
+let sandAnimationComplete = false;
+let sandResizeFrame: number | undefined;
+let observedAppWidth = 0;
+let observedAppHeight = 0;
 
 const title = document.querySelector<HTMLElement>('.sand-word');
 if (!title) throw new Error('Hero title was not found.');
@@ -388,6 +393,7 @@ function animateSand(timestamp: number): void {
     sandFill.style.clipPath = 'inset(0)';
     canvas.hidden = true;
     animationFrame = undefined;
+    sandAnimationComplete = true;
     return;
   }
 
@@ -396,29 +402,76 @@ function animateSand(timestamp: number): void {
 
 function startSand(): void {
   if (animationFrame !== undefined) cancelAnimationFrame(animationFrame);
+  if (sandResizeFrame !== undefined) cancelAnimationFrame(sandResizeFrame);
+  sandResizeFrame = undefined;
   resetSand();
+  sandAnimationComplete = false;
   if (reducedMotion.matches) {
     title.classList.remove('sand-word--ready');
     title.style.removeProperty('clip-path');
+    sandAnimationComplete = true;
+    animationFrame = undefined;
     return;
   }
   animationFrame = requestAnimationFrame(animateSand);
 }
 
-const resizeObserver = new ResizeObserver(startSand);
-resizeObserver.observe(app);
+function readAppSize(): { width: number; height: number } {
+  return {
+    width: app!.scrollWidth,
+    height: app!.scrollHeight,
+  };
+}
+
+const resizeObserver = new ResizeObserver(() => {
+  if (!sandInitialized) return;
+
+  const { width, height } = readAppSize();
+  const sizeChanged = Math.abs(width - observedAppWidth) >= 1
+    || Math.abs(height - observedAppHeight) >= 1;
+  if (!sizeChanged) return;
+
+  observedAppWidth = width;
+  observedAppHeight = height;
+  if (sandAnimationComplete) return;
+
+  if (sandResizeFrame !== undefined) cancelAnimationFrame(sandResizeFrame);
+  sandResizeFrame = requestAnimationFrame(() => {
+    sandResizeFrame = undefined;
+    startSand();
+  });
+});
+
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     if (animationFrame !== undefined) cancelAnimationFrame(animationFrame);
     animationFrame = undefined;
-  } else if (!reducedMotion.matches) {
+  } else if (
+    sandInitialized
+    && !sandAnimationComplete
+    && !reducedMotion.matches
+    && animationFrame === undefined
+  ) {
     lastFrameTime = undefined;
     animationFrame = requestAnimationFrame(animateSand);
   }
 });
-reducedMotion.addEventListener('change', startSand);
-startSand();
-void document.fonts?.ready.then(startSand);
+reducedMotion.addEventListener('change', () => {
+  if (sandInitialized) startSand();
+});
+
+async function initializeSand(): Promise<void> {
+  await document.fonts?.ready;
+  startSand();
+
+  const { width, height } = readAppSize();
+  observedAppWidth = width;
+  observedAppHeight = height;
+  sandInitialized = true;
+  resizeObserver.observe(app!);
+}
+
+void initializeSand();
 
 const carousel = document.querySelector<HTMLElement>('.project-carousel');
 const carouselCards = [...document.querySelectorAll<HTMLElement>('.project-card')];
