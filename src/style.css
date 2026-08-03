@@ -187,11 +187,12 @@ h2 em {
 }
 
 .sand-word--ready {
-    color: transparent;
+    color: var(--paper);
+    will-change: clip-path;
 }
 
 .sand-word--ready em {
-    color: transparent;
+    color: var(--paper);
 }
 
 .sand-word--ready.sand-word--settled,
@@ -530,6 +531,7 @@ h2 em {
 .experience-place {
     font: 11px/1.4 var(--mono) !important;
     letter-spacing: .04em;
+    color: var(--ink);
 }
 
 .experience-place {

@@ -205,9 +205,8 @@ let heights = new Float32Array();
 let edgeNoise = new Float32Array();
 let particles: SandParticle[] = [];
 let sandPattern: CanvasPattern | null = null;
-let textMask: HTMLCanvasElement | undefined;
-let textMaskX = 0;
-let textMaskY = 0;
+let sandWordTop = 0;
+let sandWordHeight = 0;
 
 const title = document.querySelector<HTMLElement>('.sand-word');
 if (!title) throw new Error('Hero title was not found.');
@@ -270,51 +269,16 @@ function resetSand(): void {
   canvas.hidden = false;
   title.classList.remove('sand-word--settled');
   lastFrameTime = undefined;
-  buildTextMask();
+  prepareSandWord();
   drawSand();
 }
 
-function buildTextMask(): void {
+function prepareSandWord(): void {
   const titleBox = title.getBoundingClientRect();
   const appBox = app.getBoundingClientRect();
-  const mask = document.createElement('canvas');
-  mask.width = Math.max(1, Math.ceil(titleBox.width));
-  mask.height = Math.max(1, Math.ceil(titleBox.height));
-  const maskContext = mask.getContext('2d');
-  if (!maskContext) return;
-
-  const textWalker = document.createTreeWalker(title, NodeFilter.SHOW_TEXT);
-  let textNode = textWalker.nextNode();
-
-  while (textNode) {
-    const value = textNode.textContent ?? '';
-    const parent = textNode.parentElement ?? title;
-    const styles = window.getComputedStyle(parent);
-    const fontSize = Number.parseFloat(styles.fontSize);
-    const lineHeight = Number.parseFloat(styles.lineHeight) || fontSize;
-    maskContext.font = `${styles.fontStyle} ${styles.fontWeight} ${styles.fontSize} ${styles.fontFamily}`;
-    maskContext.textBaseline = 'alphabetic';
-    maskContext.fillStyle = '#000';
-
-    for (let character = 0; character < value.length; character += 1) {
-      if (/\s/.test(value[character])) continue;
-
-      const range = document.createRange();
-      range.setStart(textNode, character);
-      range.setEnd(textNode, character + 1);
-      const characterBox = range.getBoundingClientRect();
-      if (!characterBox.width || !characterBox.height) continue;
-
-      const baseline = characterBox.top - titleBox.top + (lineHeight - fontSize) / 2 + fontSize * 0.8;
-      maskContext.fillText(value[character], characterBox.left - titleBox.left, baseline);
-    }
-
-    textNode = textWalker.nextNode();
-  }
-
-  textMask = mask;
-  textMaskX = titleBox.left - appBox.left;
-  textMaskY = titleBox.top - appBox.top;
+  sandWordTop = titleBox.top - appBox.top;
+  sandWordHeight = titleBox.height;
+  title.style.clipPath = `inset(0 0 ${sandWordHeight}px 0)`;
   title.classList.add('sand-word--ready');
 }
 
@@ -345,7 +309,10 @@ function updateHeightField(deltaSeconds: number): void {
   sandFill.style.clipPath = `inset(0 0 ${Math.max(0, siteHeight - bandTop)}px 0)`;
   canvas.style.transform = `translate3d(0, ${Math.floor(bandTop)}px, 0)`;
 
-  if (textMask && bandTop >= textMaskY + textMask.height) {
+  const revealedHeight = Math.max(0, Math.min(sandWordHeight, bandTop - sandWordTop));
+  title.style.clipPath = `inset(0 0 ${sandWordHeight - revealedHeight}px 0)`;
+
+  if (bandTop >= sandWordTop + sandWordHeight) {
     title.classList.add('sand-word--settled');
   }
 }
@@ -403,16 +370,6 @@ function drawSand(): void {
     context.fillStyle = sandColors[colorIndex];
     context.fill();
   }
-
-  if (textMask && !title.classList.contains('sand-word--settled')) {
-    const localMaskY = textMaskY - bandTop;
-    if (localMaskY < edgeBandHeight && localMaskY + textMask.height > 0) {
-      context.save();
-      context.globalCompositeOperation = 'destination-out';
-      context.drawImage(textMask, textMaskX, localMaskY);
-      context.restore();
-    }
-  }
 }
 
 function animateSand(timestamp: number): void {
@@ -442,6 +399,7 @@ function startSand(): void {
   resetSand();
   if (reducedMotion.matches) {
     title.classList.remove('sand-word--ready');
+    title.style.removeProperty('clip-path');
     return;
   }
   animationFrame = requestAnimationFrame(animateSand);
