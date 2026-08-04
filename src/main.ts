@@ -177,14 +177,14 @@ const context: CanvasRenderingContext2D = foundContext;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const sandColors = ['#dd5b34', '#d85a35', '#df603a', '#d35331'];
 // Change this one value to control the size of every visible sand pixel.
-const sandPixelSize = 2;
+const sandPixelSize = 10;
 const columnWidth = sandPixelSize * 2;
-const maxParticles = 320;
+const maxParticles = 100;
 const frameInterval = 1_000 / 60;
 const maxFrameDelta = 100;
 const edgeBandHeight = 128;
-const edgeLead = 48;
-const sandFallSpeed = 160;
+const edgeLead = 10;
+const sandFallSpeed = 360;
 const sandCatchUpSpeed = 300;
 
 type SandParticle = {
