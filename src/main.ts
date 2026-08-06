@@ -94,11 +94,11 @@ app.innerHTML = `
         <h2 id="work-title">Projects built to make ideas tangible.</h2>
       </div>
       <div class="project-carousel" role="region" aria-roledescription="carousel" aria-label="Selected projects" tabindex="0">
-        <button class="carousel-control carousel-control--previous" type="button" aria-label="Previous project">🢤</button>
+        <button class="carousel-control carousel-control--previous" type="button" aria-label="Previous project">${'\u2B60'}</button>
         <div class="carousel-stage">
           ${projectCards}
         </div>
-        <button class="carousel-control carousel-control--next" type="button" aria-label="Next project">➪</button>
+        <button class="carousel-control carousel-control--next" type="button" aria-label="Next project">${'\u2B62'}</button>
         <div class="carousel-pagination" aria-label="Choose a project">
           ${projects.map((project, index) => `
             <button type="button" data-carousel-page="${index}" aria-label="Show ${project.title}"></button>
