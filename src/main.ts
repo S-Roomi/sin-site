@@ -82,8 +82,8 @@ app.innerHTML = `
         <h1 id="hero-title" class="sand-word">Sina Roomi</h1>
         <p class="intro">${profile.role}. I turn complex problems into simple ones.</p>
         <div class="hero-actions">
-          <a class="button" href="#work">See my work <span aria-hidden="true">↓</span></a>
-          <a class="text-link" href="mailto:${profile.email}">Let's talk <span aria-hidden="true">↗</span></a>
+          <a class="button" href="#work">See my work <span aria-hidden="true">${'\u2193'}</span></a>
+          <a class="text-link" href="mailto:${profile.email}">Let's talk <span aria-hidden="true" style="color: #183131">${'\u2197'}</span></a>
         </div>
       </div>
     </section>
