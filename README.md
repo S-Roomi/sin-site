@@ -1,4 +1,4 @@
-# Sin-Site — Personal Website
+# sin-site — Personal Website
 
 Source code for my personal portfolio and resume site.
 
