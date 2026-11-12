@@ -1,4 +1,4 @@
-# Sina Roomi — Personal Website
+# Sin-Site — Personal Website
 
 Source code for my personal portfolio and resume site.
 
