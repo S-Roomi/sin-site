@@ -8,13 +8,6 @@ Source code for my personal portfolio and resume site.
 
 This site introduces who I am, highlights projects I've worked on, and provides a copy of my resume. It is a single-page site built with TypeScript and Vite.
 
-## Features
-
-- An animated falling-sand title, with support for reduced-motion preferences
-- A project carousel showcasing selected work
-- Navigation that tracks the current section as you scroll
-- A downloadable resume
-
 ## Built With
 
 - TypeScript
