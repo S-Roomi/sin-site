@@ -112,7 +112,7 @@ app.innerHTML = `
     <section class="hero" id="top" aria-labelledby="hero-title">
       <div class="hero-copy">
         <h1 id="hero-title" class="sand-word">Sina Roomi</h1>
-        <p class="intro">${profile.role}. I turn complex problems into simple ones.</p>
+        <p class="intro">${profile.role}. I build software that makes everyday life a little easier.</p>
         <div class="hero-actions">
           <a class="button" href="#work">See my work <span aria-hidden="true">${'\u2193'}</span></a>
           <a class="text-link" href="mailto:${profile.email}">Let's talk <span aria-hidden="true" style="color: #183131">${'\u2197'}</span></a>
@@ -123,7 +123,7 @@ app.innerHTML = `
     <section class="section work" id="work" aria-labelledby="work-title">
       <div class="section-heading">
         <p class="eyebrow">Selected work</p>
-        <h2 id="work-title">Projects built to make ideas tangible.</h2>
+        <h2 id="work-title">Projects I've worked on.</h2>
       </div>
       <div class="project-carousel" role="region" aria-roledescription="carousel" aria-label="Selected projects" tabindex="0">
         <button class="carousel-control carousel-control--previous" type="button" aria-label="Previous project">${'\u2B60'}</button>
@@ -143,10 +143,10 @@ app.innerHTML = `
     <section class="section about" id="about" aria-labelledby="about-title">
       <p class="eyebrow">About</p>
       <div class="about-grid">
-        <h2 id="about-title">I make complex systems feel approachable.</h2>
+        <h2 id="about-title">I learn by building and asking too many questions</h2>
         <div>
-          <p>I'm a UMBC computer science graduate with a minor in philosophy. I enjoy building reliable software and explaining the ideas behind it clearly.</p>
-          <p>My tutoring and mentoring work has made me a patient collaborator who can break down difficult problems, listen closely, and help a team move forward.</p>
+          <p>I'm a UMBC computer science graduate with a minor in philosophy. I enjoy breaking hard problems into simple pieces that build on each other.</p>
+          <p>Years of tutoring have taught me to explain problems, and my own thinking, clearly to anyone.</p>
           <p>Technical Skills:</p>
           <ul class="skills" aria-label="Technical skills"><li>Python</li><li>C/C++</li><li>JavaScript</li><li>TypeScript</li><li>HTML/CSS</li><li>SQL</li><li>React</li><li>Next.js</li><li>NumPy</li><li>Pandas</li><li>Git</li><li>Docker</li></ul>
         </div>
