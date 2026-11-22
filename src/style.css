@@ -388,6 +388,13 @@ h2 em {
     transform: translateX(18%) translateY(56px) rotate(6deg) scale(.86);
 }
 
+.project-card[data-position='hidden'] {
+    z-index: 1;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(56px) scale(.8);
+}
+
 .project-card[data-position='active']:hover {
     box-shadow: 0 24px 52px rgba(24, 49, 49, .2);
 }

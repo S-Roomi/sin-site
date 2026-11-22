@@ -525,7 +525,8 @@ function showProject(index: number): void {
 
   for (const [cardIndex, card] of carouselCards.entries()) {
     const offset = projectOffset(cardIndex);
-    card.dataset.position = offset === 0 ? 'active' : offset < 0 ? 'previous' : 'next';
+    card.dataset.position =
+      offset === 0 ? 'active' : offset === -1 ? 'previous' : offset === 1 ? 'next' : 'hidden';
     card.setAttribute('aria-label', `Project ${cardIndex + 1} of ${projects.length}: ${projects[cardIndex].title}`);
     card.querySelector<HTMLAnchorElement>('a')!.tabIndex = offset === 0 ? 0 : -1;
   }
