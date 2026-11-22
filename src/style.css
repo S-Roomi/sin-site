@@ -404,6 +404,14 @@ h2 em {
     background: #ebcf8e;
 }
 
+.rose {
+    background: #e6c3bd;
+}
+
+.sky {
+    background: #bcd3e4;
+}
+
 .project-card h3 {
     margin: 12px 0;
     font-size: clamp(25px, 2.5vw, 38px);
