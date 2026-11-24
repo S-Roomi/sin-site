@@ -40,7 +40,7 @@ const projects = [
   {
     number: '03',
     type: 'Windows utility in Go',
-    title: 'ATH',
+    title: 'Duck',
     description: 'A lightweight background tool that hides the Windows taskbar in fullscreen and borderless apps, and never leaves it stuck hidden.',
     color: 'amber',
     url: 'https://github.com/S-Roomi/ath',
